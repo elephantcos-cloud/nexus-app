@@ -28,17 +28,7 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Install dependencies
-        run: |
-          npm install --legacy-peer-deps
-
-      - name: Verify expo gradle plugin exists
-        run: |
-          if [ ! -d "node_modules/expo/gradle" ]; then
-            echo "expo/gradle not found, reinstalling expo..."
-            npm install expo --legacy-peer-deps
-          fi
-          echo "expo/gradle check passed"
-          ls node_modules/expo/gradle || true
+        run: npm install --legacy-peer-deps
 
       - name: Create .env file
         run: |
@@ -51,10 +41,21 @@ jobs:
           echo "EXPO_PUBLIC_GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}" >> .env
 
       - name: Prebuild Android
-        run: |
-          npx expo prebuild --platform android --clean --no-install
+        run: npx expo prebuild --platform android --clean --no-install
         env:
           EXPO_NO_TELEMETRY: 1
+
+      - name: Bundle JavaScript
+        run: |
+          mkdir -p android/app/src/main/assets
+          npx react-native bundle \
+            --platform android \
+            --dev false \
+            --entry-file index.js \
+            --bundle-output android/app/src/main/assets/index.android.bundle \
+            --assets-dest android/app/src/main/res
+        env:
+          NODE_ENV: production
 
       - name: Build Debug APK
         run: |
