@@ -46,6 +46,12 @@ jobs:
       - name: Prebuild Android
         run: npx expo prebuild --platform android --clean
 
+      - name: Fix gradle.properties
+        run: |
+          echo "android.useAndroidX=true" >> android/gradle.properties
+          echo "android.enableJetifier=true" >> android/gradle.properties
+          echo "org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=512m" >> android/gradle.properties
+
       - name: Build Debug APK
         run: |
           cd android
