@@ -5,6 +5,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -43,20 +46,54 @@ jobs:
       - name: Prebuild Android
         run: npx expo prebuild --platform android --clean
 
-      - name: Fix AGP version for Expo 51
+      - name: Patch Android build files for AGP 8.3+ compatibility
         run: |
-          sed -i 's/com\.android\.tools\.build:gradle:[0-9.]*/com.android.tools.build:gradle:8.1.4/g' android/build.gradle
-          sed -i 's|distributionUrl=.*|distributionUrl=https\\://services.gradle.org/distributions/gradle-8.6-bin.zip|g' android/gradle/wrapper/gradle-wrapper.properties
-          echo "=== android/build.gradle ==="
-          cat android/build.gradle
-          echo "=== gradle-wrapper.properties ==="
-          cat android/gradle/wrapper/gradle-wrapper.properties
+          echo "=== Checking settings.gradle ==="
+          cat android/settings.gradle
+
+          # Fix 1: Ensure expo/gradle includeBuild is in settings.gradle
+          if ! grep -q "expo/gradle" android/settings.gradle; then
+            echo "" >> android/settings.gradle
+            echo "includeBuild('../node_modules/expo/gradle')" >> android/settings.gradle
+            echo "Added expo/gradle includeBuild"
+          fi
+
+          # Fix 2: Force AGP 8.1.4 in build.gradle via resolutionStrategy
+          cat >> android/build.gradle << 'GRADLE_EOF'
+
+          subprojects {
+            configurations.all {
+              resolutionStrategy {
+                force 'com.android.tools.build:gradle:8.1.4'
+              }
+            }
+          }
+          GRADLE_EOF
+
+          # Fix 3: Patch expo's build.gradle for AGP 8.3+ release component issue
+          find node_modules/expo/android -name "build.gradle" | while read f; do
+            if grep -q "components\.release" "$f"; then
+              echo "Patching: $f"
+              sed -i 's/from components\.release/from(components.findByName("release") ?: components.findByName("default"))/g' "$f"
+            fi
+          done
+
+          # Fix 4: Patch expo-modules-core similarly
+          find node_modules/expo-modules-core/android -name "build.gradle" | while read f; do
+            if grep -q "components\.release" "$f"; then
+              echo "Patching: $f"
+              sed -i 's/from components\.release/from(components.findByName("release") ?: components.findByName("default"))/g' "$f"
+            fi
+          done
+
+          echo "=== Final settings.gradle ==="
+          cat android/settings.gradle
 
       - name: Build Debug APK
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug --stacktrace
+          ./gradlew assembleDebug --stacktrace --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
