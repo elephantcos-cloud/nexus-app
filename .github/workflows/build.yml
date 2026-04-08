@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build Nexus APK
 
 on:
   push:
@@ -30,9 +30,6 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Install Expo CLI
-        run: npm install -g expo-cli eas-cli
-
       - name: Create .env file
         run: |
           echo "EXPO_PUBLIC_FIREBASE_API_KEY=${{ secrets.FIREBASE_API_KEY }}" >> .env
@@ -46,11 +43,14 @@ jobs:
       - name: Prebuild Android
         run: npx expo prebuild --platform android --clean
 
-      - name: Fix gradle.properties
+      - name: Fix AGP version for Expo 51
         run: |
-          echo "android.useAndroidX=true" >> android/gradle.properties
-          echo "android.enableJetifier=true" >> android/gradle.properties
-          echo "org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=512m" >> android/gradle.properties
+          sed -i 's/com\.android\.tools\.build:gradle:[0-9.]*/com.android.tools.build:gradle:8.1.4/g' android/build.gradle
+          sed -i 's|distributionUrl=.*|distributionUrl=https\\://services.gradle.org/distributions/gradle-8.6-bin.zip|g' android/gradle/wrapper/gradle-wrapper.properties
+          echo "=== android/build.gradle ==="
+          cat android/build.gradle
+          echo "=== gradle-wrapper.properties ==="
+          cat android/gradle/wrapper/gradle-wrapper.properties
 
       - name: Build Debug APK
         run: |
