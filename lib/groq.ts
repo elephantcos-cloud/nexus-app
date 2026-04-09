@@ -1,41 +1,35 @@
-const GROQ_API_KEY = process.env.EXPO_PUBLIC_GROQ_API_KEY || '';
-const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
-
 export interface Message {
-  role: 'user' | 'assistant' | 'system';
+  role: 'user' | 'assistant';
   content: string;
 }
 
 export async function sendMessageToGroq(messages: Message[]): Promise<string> {
+  const apiKey = process.env.EXPO_PUBLIC_GROQ_API_KEY;
+  
   try {
-    const response = await fetch(GROQ_API_URL, {
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${GROQ_API_KEY}`,
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are Nexus AI, a helpful and friendly assistant built into the Nexus social app. Be concise, helpful, and engaging.',
-          },
-          ...messages,
-        ],
+        model: 'llama3-8b-8192',
+        messages: messages,
         max_tokens: 1024,
         temperature: 0.7,
       }),
     });
 
+    const data = await response.json();
+    
     if (!response.ok) {
-      throw new Error('Groq API error');
+      throw new Error(data.error?.message || 'Groq API error');
     }
 
-    const data = await response.json();
-    return data.choices[0]?.message?.content || 'Sorry, I could not generate a response.';
+    return data.choices[0]?.message?.content || 'কোনো উত্তর পাওয়া যায়নি।';
   } catch (error) {
     console.error('Groq error:', error);
-    return 'Sorry, I am having trouble connecting right now. Please try again.';
+    return 'AI এর সাথে সংযোগ করতে সমস্যা হচ্ছে।';
   }
 }
