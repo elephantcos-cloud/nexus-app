@@ -44,22 +44,9 @@ jobs:
           echo "EXPO_PUBLIC_GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}" >> .env
 
       - name: Prebuild Android
-        run: npx expo prebuild --platform android --clean --no-install
+        run: npx expo prebuild --platform android --clean
         env:
           EXPO_NO_TELEMETRY: 1
-
-      - name: Bundle JavaScript
-        run: |
-          mkdir -p android/app/src/main/assets
-          npx react-native bundle \
-            --platform android \
-            --dev false \
-            --entry-file index.js \
-            --bundle-output android/app/src/main/assets/index.android.bundle \
-            --assets-dest android/app/src/main/res \
-            --config metro.config.js
-        env:
-          NODE_ENV: production
 
       - name: Build Debug APK
         run: |
